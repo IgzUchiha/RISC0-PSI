@@ -1,31 +1,34 @@
 pragma solidity ^0.8.0;
 
-// import {IRiscZeroVerifier} from "risc0/IRiscZeroVerifier.sol";
 import {IRiscZeroVerifier} from "risc0/IRiscZeroVerifier.sol";
-import {ImageID} from "./ImageID.sol"; // auto-generated contract after running `cargo build`.
-import {Token} from "./Token.sol"; 
-import {TokenVerifier} from "./ZKTokenVerfier.sol"; 
+import {ImageID} from "./ImageID.sol";
+
 contract TokenVerifier {
     IRiscZeroVerifier public immutable verifier;
+    uint256 public Token; // Declare Token as a state variable.
 
-   constructor(IRiscZeroVerifier _verifier) {
+    constructor(IRiscZeroVerifier _verifier) {
         verifier = _verifier;
-        tokens = x > 0;
     }
 
-       function set(uint256 x, bytes calldata seal) public {
-        // Construct the expected journal data. Verify will fail if journal does not match.
+    // Set the value of Token after verification.
+    function set(uint256 x, bytes calldata seal) public {
         bytes memory journal = abi.encode(x);
-        verifier.verify(seal, imageId, sha256(journal));
-        tokens = x;
+        require(verifier.verify(seal, ImageID.IMAGE_ID, sha256(journal)), "Verification failed");
+        Token = x;
     }
 
-     function get() public view returns (uint256) {
-        return tokens;
+    // Get the value of Token.
+    function get() public view returns (uint256) {
+        return Token;
     }
-    // The proof parameter should include the actual proof, 
-    // and you may need to pass the public inputs as well
+
+    // Verify a proof with the verifier.
     function verifyProof(bytes calldata proof, bytes calldata publicInputs) external {
-        require(verifier.verify(proof, publicInputs), "Proof verification failed");
+        bytes32 publicInputsHash = sha256(publicInputs);
+        require(
+            verifier.verify(proof, ImageID.IMAGE_ID, publicInputsHash),
+            "Proof verification failed"
+        );
     }
 }
