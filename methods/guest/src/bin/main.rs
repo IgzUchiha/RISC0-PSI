@@ -1,55 +1,46 @@
-
-use std::io::Read;
 use risc0_zkvm::guest::env;
-// use serde::{Serialize, Deserialize};
-// use risc0_zkvm::prover::prove;
-// use risc0_zkvm::types::u256;
+use risc0_zkvm::serde::{Deserialize, Serialize};
 
-#[derive(Serialize, Deserialize)]
+// Define the input struct with serialization/deserialization capabilities.
+#[derive(Serialize, Deserialize, Debug)]
 struct TransferInput {
-    from: [u8; 20], // Ethereum address length
-    to: [u8; 20],
-    value: u256,
-    balance_from: u256,
-    balance_to: u256,
+    from: [u8; 20],        // Ethereum address of the sender
+    to: [u8; 20],          // Ethereum address of the receiver
+    token_transfer_value: u32, // Amount to transfer
+    balance_from: u32,     // Sender's initial balance
+    balance_to: u32,       // Receiver's initial balance
 }
 
-impl Guest for TransferInput {
-    fn run(&self) -> Result<(), String> {
-        let balance_from = self.balance_from;
-        let balance_to = self.balance_to;
-
-        // Verify the transfer logic
-        if balance_from < self.value {
+impl TransferInput {
+    // Logic to verify a single token transfer.
+    fn verify_transfer(&self) -> Result<(u32, u32), String> {
+        // Ensure the sender has enough balance.
+        if self.balance_from < self.token_transfer_value {
             return Err("Insufficient balance".to_string());
         }
-        if self.value < 0 {
-            return Err("Transfer amount cannot be negative".to_string());
-        }
 
-        // Apply the transfer logic
-        let new_balance_from = balance_from - self.value;
-        let new_balance_to = balance_to + self.value;
+        // Perform the token transfer.
+        let new_balance_from = self.balance_from - self.token_transfer_value;
+        let new_balance_to = self.balance_to + self.token_transfer_value;
 
-        // Output the new balances (public inputs for verification)
-        self.write_output(new_balance_from);
-        self.write_output(new_balance_to);
-
-        Ok(())
+        Ok((new_balance_from, new_balance_to))
     }
 }
 
 fn main() {
-    let input = TransferInput {
-        from: [0; 20],      // Example Ethereum address
-        to: [1; 20],        // Example recipient address
-        value: 100,         // Token transfer value
-        balance_from: 1000, // Sender's initial balance
-        balance_to: 500,    // Recipient's initial balance
-    };
+    // Read the input data from the host environment.
+    let input: TransferInput = env::read();
 
-    // Generate proof
-    let proof = prove(input).expect("Proof generation failed");
-    // Now send the proof and public inputs to the Ethereum contract
+    // Perform and verify the transfer logic.
+    match input.verify_transfer() {
+        Ok((new_balance_from, new_balance_to)) => {
+            // Output the new balances as public inputs.
+            env::write(&new_balance_from);
+            env::write(&new_balance_to);
+        }
+        Err(err) => {
+            // Log the error for debugging.
+            env::log(&format!("Verification failed: {}", err));
+        }
+    }
 }
-
