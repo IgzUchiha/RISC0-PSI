@@ -1,39 +1,65 @@
+// Copyright 2024 RISC Zero, Inc.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+#![allow(unused_doc_comments)]
+#![no_main]
+
+use alloy_primitives::{Address, U256};
+use alloy_sol_types::{sol, SolValue};
+use risc0_steel::{
+    ethereum::{EthEvmInput, ETH_SEPOLIA_CHAIN_SPEC},
+    Commitment, Contract,
+};
 use risc0_zkvm::guest::env;
-use risc0_zkvm::serde::{Deserializer, Serializer};
-// use risc0_zkvm::serde::{from_slice, to_vec};
 
-#[derive(Serializer, Deserializer, Debug)]
-struct TransferInput {
-    from: [u8; 20],        // Ethereum address of the sender
-    to: [u8; 20],          // Ethereum address of the receiver
-    token_transfer_value: u32, // Amount to transfer
-    balance_from: u32,     // Sender's initial balance
-    balance_to: u32,       // Receiver's initial balance
-}
+risc0_zkvm::guest::entry!(main);
 
-impl TransferInput {
-    fn verify_transfer(&self) -> Result<(u32, u32), String> {
-        if self.balance_from < self.token_transfer_value {
-            return Err("Insufficient balance".to_string());
-        }
-
-        let new_balance_from = self.balance_from - self.token_transfer_value;
-        let new_balance_to = self.balance_to + self.token_transfer_value;
-
-        Ok((new_balance_from, new_balance_to))
+/// Specify the function to call using the [`sol!`] macro.
+/// This parses the Solidity syntax to generate a struct that implements the `SolCall` trait.
+sol! {
+    /// ERC-20 balance function signature.
+    interface IERC20 {
+        function balanceOf(address account) external view returns (uint);
     }
 }
 
-fn main() {
-    let input: TransferInput = env::read();
-
-    match input.verify_transfer() {
-        Ok((new_balance_from, new_balance_to)) => {
-            env::write(&new_balance_from);
-            env::write(&new_balance_to);
-        }
-        Err(err) => {
-            env::log(&format!("Verification failed: {}", err));
-        }
+/// ABI encodable journal data.
+sol! {
+    struct Journal {
+        Commitment commitment;
+        address tokenAddress;
     }
 }
+#[tokio::main]
+async fn main() -> eyre::Result<()> {
+    // Load the `.env` file into the environment
+    dotenv().ok();
+
+    // Retrieve the Alchemy API key from the environment variables
+    let alchemy_api_key = env::var("ALCHEMY_API_KEY")
+        .expect("ALCHEMY_API_KEY must be set in the environment");
+
+    // Construct the Sepolia endpoint
+    let sepolia_url = format!("https://eth-sepolia.g.alchemy.com/v2/{}", alchemy_api_key);
+
+    // Create a provider
+    let provider = Provider::<Http>::try_from(sepolia_url)?;
+
+    // Example usage: Fetch the current block number
+    let block_number = provider.get_block_number().await?;
+    println!("Current block number: {}", block_number);
+
+    Ok(())
+}
+

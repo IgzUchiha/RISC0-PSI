@@ -52,19 +52,22 @@
 //     }
 // }
 // methods/src/lib.rs
-use risc0_zkvm::serde::{Deserialize, Serialize};
+use std::os::raw::c_int;
 
+// use risc0_zkvm::serde::{Deserialize, Serialize};
+use serde::{Serialize, Deserialize};
 #[derive(Serialize, Deserialize, Debug)]
 pub struct TransferInput {
-    pub from: [u8; 20],               // Sender address
-    pub to: [u8; 20],                 // Receiver address
-    pub token_transfer_value: u32,    // Transfer amount
-    pub balance_from: u32,            // Sender's balance
-    pub balance_to: u32,              // Receiver's balance
+    pub from: [u8; 20],
+    pub to: [u8; 20],
+    pub token_transfer_value: u32,
+    pub balance_from: u32,
+    pub balance_to: u32,
 }
 
+
 // Export the method ID
-risc0_zkvm::declare_methods!(
+risc0_zkvm::declare_methods!(  
     TRANSFER_METHOD_ID,
     "path_to_guest_binary" // Update with the actual path to your guest binary
 );

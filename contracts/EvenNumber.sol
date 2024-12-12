@@ -14,12 +14,12 @@
 //
 // SPDX-License-Identifier: Apache-2.0
 
-pragma solidity ^0.8.20;
+pragma solidity ^0.8.28;
 
 import {IRiscZeroVerifier} from "risc0/IRiscZeroVerifier.sol";
 import {ImageID} from "./ImageID.sol"; // auto-generated contract after running `cargo build`.
 import {Token} from "./Token.sol"; 
-import {TokenVerifier} from "./ZKTokenVerfier.sol"; 
+import {PrivateTokenVerifier} from "./ZKTokenVerfier.sol"; 
 /// @title A starter application using RISC Zero.
 /// @notice This basic application holds a number, guaranteed to be even.
 /// @dev This contract demonstrates one pattern for offloading the computation of an expensive
